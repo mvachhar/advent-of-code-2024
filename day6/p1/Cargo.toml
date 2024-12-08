@@ -1,0 +1,9 @@
+[package]
+name = "p1"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.5.23", features = ["derive"] }
+lazy_static = "1.5.0"
+ndarray = "0.16.1"
