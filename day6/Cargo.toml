@@ -1,7 +1,15 @@
 [package]
-name = "p1"
+name = "day6"
 version = "0.1.0"
 edition = "2021"
+
+[lib]
+name = "day6"
+path = "src/lib.rs"
+
+[[bin]]
+name = "p1"
+path = "src/bin/p1.rs"
 
 [dependencies]
 clap = { version = "4.5.23", features = ["derive"] }
