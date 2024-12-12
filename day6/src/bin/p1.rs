@@ -2,8 +2,8 @@ use clap::Parser;
 use std::convert::TryFrom;
 
 use day6::board::{self, Board, BoardIndex};
-use day6::dir_vec::{DirVec, DIR_DOWN, DIR_LEFT, DIR_RIGHT, DIR_UP};
 use day6::board::{DIR_SYM_DOWN, DIR_SYM_LEFT, DIR_SYM_RIGHT, DIR_SYM_UP, OBSTACLE_SYM};
+use day6::dir_vec::{DirVec, DIR_DOWN, DIR_LEFT, DIR_RIGHT, DIR_UP};
 
 const OCCUPIED_SYM: u8 = b'X';
 
@@ -22,28 +22,6 @@ impl fmt::Display for SimError {
 
 impl std::error::Error for SimError {}
 
-fn find_guard(board: &Board) -> Result<(BoardIndex, u8), SimError> {
-    for row in 0..board.nrows() {
-        for col in 0..board.ncols() {
-            let cell = board[[row, col]];
-            let is_guard = match cell {
-                DIR_SYM_UP | DIR_SYM_DOWN | DIR_SYM_LEFT | DIR_SYM_RIGHT => true,
-                _ => false,
-            };
-            if is_guard {
-                return Ok((
-                    // Conversion from raw to BoardIndex should never fail here
-                    BoardIndex::from_raw(&board, &[row, col]).unwrap(),
-                    cell,
-                ));
-            }
-        }
-    }
-    return Err(SimError {
-        message: String::from("No guard found"),
-    });
-}
-
 fn dir_sym_to_vec(dir_sym: u8) -> Result<DirVec, SimError> {
     match dir_sym {
         DIR_SYM_LEFT => Ok(DIR_LEFT),
@@ -58,8 +36,15 @@ fn dir_sym_to_vec(dir_sym: u8) -> Result<DirVec, SimError> {
 
 fn compute_positions(board: &mut Board) -> Result<u32, SimError> {
     let mut positions = 0;
-    let (board_index, dir_sym) = find_guard(&board)?;
-    let mut pos = DirVec::try_from(board_index).map_err(|e| SimError {
+    let (board_index, dir_sym_ref) = board::find(&board, |x| match *x {
+        DIR_SYM_UP | DIR_SYM_DOWN | DIR_SYM_LEFT | DIR_SYM_RIGHT => true,
+        _ => false,
+    })
+    .map_err(|e| SimError {
+        message: format!("{}", e),
+    })?;
+    let dir_sym = *dir_sym_ref;
+    let mut pos = DirVec::try_from(&board_index).map_err(|e| SimError {
         message: format!("Invalid board index for guard: {}", e),
     })?;
     let mut dir_vec = dir_sym_to_vec(dir_sym)?;

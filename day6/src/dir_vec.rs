@@ -24,10 +24,10 @@ pub const DIR_RIGHT: DirVec = DirVec(1, 0);
 pub const DIR_UP: DirVec = DirVec(0, -1);
 pub const DIR_DOWN: DirVec = DirVec(0, 1);
 
-impl TryFrom<BoardIndex> for DirVec {
+impl TryFrom<&BoardIndex> for DirVec {
     type Error = <isize as TryFrom<usize>>::Error;
 
-    fn try_from(index: BoardIndex) -> Result<Self, Self::Error> {
+    fn try_from(index: &BoardIndex) -> Result<Self, Self::Error> {
         let x = isize::try_from(index.raw()[1])?;
         let y = isize::try_from(index.raw()[0])?;
         return Ok(DirVec(x, y));
