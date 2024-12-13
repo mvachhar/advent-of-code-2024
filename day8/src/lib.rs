@@ -2,8 +2,6 @@ pub mod dir_vec;
 pub mod board;
 
 use std::error::Error;
-
-use dir_vec::DirVec;
 use board::{Board, BoardIndex, BoardError};
 
 #[derive(Debug, Clone)]
@@ -15,20 +13,20 @@ pub struct MapLoc {
 pub type Map = Board<MapLoc>;
 pub type MapIndex = BoardIndex;
 
-fn mark_antinode(map: &mut Map, pos: &DirVec) -> Result<usize, BoardError> {
-    let antinode_index_res = MapIndex::from_pos(map, &pos);
-    let antinode_index = match antinode_index_res {
-        Ok(index) => index,
-        Err(e) => {
-            match e.kind {
-                board::BoardErrorKind::OutOfBounds => return Ok(0),
-                _ => return Err(e),
-            }
+fn mark_antinode(map: &mut Map, antinode_index: &MapIndex) -> Result<usize, BoardError> {
+    let antinode_loc = match map.get(antinode_index.raw()){
+        Some(loc) => loc,
+        None => {
+            let (field, val, bound) = if antinode_index.row() >= map.nrows() {
+                ("row", antinode_index.row(), map.nrows() - 1)
+            } else if antinode_index.col() >= map.ncols() {
+                ("col", antinode_index.col(), map.ncols() - 1)
+            } else {
+                ("unknown", 0, 0)
+            };
+            return Err(BoardError::new_oob(&format!("Antinode index {} out of bounds", field), val, bound));
         }
     };
-
-    // At this point, antinode_index is valid
-    let antinode_loc = map.get(antinode_index.raw()).unwrap();
     if !antinode_loc.has_antinode {
         map[antinode_index.raw()].has_antinode = true;
         return Ok(1);
@@ -36,21 +34,23 @@ fn mark_antinode(map: &mut Map, pos: &DirVec) -> Result<usize, BoardError> {
     return Ok(0);
 }
 
-fn mark_antinodes(map: &mut Map, index1: &MapIndex, index2: &MapIndex) -> Result<usize, Box<dyn Error>> {
+fn mark_antinodes<F>(map: &mut Map, index1: &MapIndex, index2: &MapIndex, antinode_locs: &F) -> Result<usize, Box<dyn Error>>
+where 
+    F: Fn(&Map, &MapIndex, &MapIndex) -> Result<Vec<MapIndex>, Box<dyn Error>>
+{
     let mut count = 0;
-    let pos1 = DirVec::try_from(index1)?;
-    let pos2 = DirVec::try_from(index2)?;
-    let antinode_dir1 = pos2.sub(&pos1);
-    let antinode_dir2 = antinode_dir1.neg();
-    let antinode_pos1 = pos2.add(&antinode_dir1);
-    let antinode_pos2 = pos1.add(&antinode_dir2);
+    let locs = antinode_locs(map, index1, index2)?;
 
-    count += mark_antinode(map, &antinode_pos1)?;
-    count += mark_antinode(map, &antinode_pos2)?;
+    for loc in locs {
+        count += mark_antinode(map, &loc)?;
+    }
     Ok(count)
 }
 
-fn find_new_antinodes(map: &mut Map, index: MapIndex, sym: u8) -> Result<usize, Box<dyn Error>> {
+fn find_new_antinodes<F>(map: &mut Map, index: MapIndex, sym: u8, antinode_locs: &F) -> Result<usize, Box<dyn Error>>
+where
+    F: Fn(&Map, &MapIndex, &MapIndex) -> Result<Vec<MapIndex>, Box<dyn Error>>
+{
     let mut count = 0;
     // Only search forward on the map since earlier 
     // antennas would already be handled
@@ -63,7 +63,7 @@ fn find_new_antinodes(map: &mut Map, index: MapIndex, sym: u8) -> Result<usize, 
             match loc.sym {
                 Some(new_sym) => {
                     if new_sym == sym {
-                        count += mark_antinodes(map, &index, &new_index)?;
+                        count += mark_antinodes(map, &index, &new_index, antinode_locs)?;
                     }
                 }
                 None => {}
@@ -73,7 +73,10 @@ fn find_new_antinodes(map: &mut Map, index: MapIndex, sym: u8) -> Result<usize, 
     return Ok(count);
 }
 
-pub fn count_antinodes(map: &mut Map) -> Result<usize, Box<dyn Error>> {
+pub fn count_antinodes<F>(map: &mut Map, antinode_locs: &F) -> Result<usize, Box<dyn Error>> 
+where
+    F: Fn(&Map, &MapIndex, &MapIndex) -> Result<Vec<MapIndex>, Box<dyn Error>>
+{
     let mut count = 0;
     for i in 0..map.nrows() {
         for j in 0..map.ncols() {
@@ -82,7 +85,7 @@ pub fn count_antinodes(map: &mut Map) -> Result<usize, Box<dyn Error>> {
             let loc = map.get(index.raw()).unwrap();
             match loc.sym {
                 Some(sym) => {
-                    count += find_new_antinodes(map, index, sym)?;
+                    count += find_new_antinodes(map, index, sym, antinode_locs)?;
                 }
                 None => {}
             }
