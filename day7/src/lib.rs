@@ -13,6 +13,7 @@ pub struct PossibleCalibrationEq {
 pub enum Op {
     Add,
     Mul,
+    Concat,
 }
 
 impl Display for Op {
@@ -20,6 +21,7 @@ impl Display for Op {
         write!(f, "{}", match self {
             Op::Add => "+",
             Op::Mul => "*",
+            Op::Concat => "||",
         })
     }
 }
@@ -105,6 +107,11 @@ fn eval(args: &[u64], ops: &[Op]) -> Result<u64, ()> {
         acc = match op {
             Op::Add => acc + args[i+1],
             Op::Mul => acc * args[i+1],
+            Op::Concat => {
+                let mut s = acc.to_string();
+                s.push_str(&args[i+1].to_string());
+                s.parse::<u64>().map_err(|_| ())?
+            },
         }
     }
     return Ok(acc);
