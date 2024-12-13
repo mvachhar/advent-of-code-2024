@@ -11,6 +11,14 @@ impl DirVec {
     pub fn add(&self, other: &DirVec) -> DirVec {
         DirVec(self.0 + other.0, self.1 + other.1)
     }
+
+    pub fn neg(&self) -> DirVec {
+        DirVec(-self.0, -self.1)
+    }
+
+    pub fn sub(&self, other: &DirVec) -> DirVec {
+        self.add(&other.neg())
+    }
 }
 
 impl Display for DirVec {
