@@ -4,7 +4,7 @@ use std::fmt;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
 
-pub type Board<T = u8> = Array2<T>;
+pub type Board<T> = Array2<T>;
 #[derive(Debug)]
 pub struct BoardIndex([usize; 2]);
 
@@ -132,7 +132,7 @@ impl BoardIndex {
         self.0
     }
 
-    pub fn from_raw(board: &Board, ri: &[usize; 2]) -> Result<BoardIndex, BoardError> {
+    pub fn from_raw<T>(board: &Board<T>, ri: &[usize; 2]) -> Result<BoardIndex, BoardError> {
         let row = ri[0];
         let col = ri[1];
         if row >= board.nrows() {
