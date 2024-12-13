@@ -117,31 +117,29 @@ fn eval(args: &[u64], ops: &[Op]) -> Result<u64, ()> {
     return Ok(acc);
 }
 
-fn build_calibration_eq<'a>(result: u64, args: &[u64], legal_ops: &[Op], ops: &'a mut Vec<Op>) -> (Result<(), ()>, &'a mut Vec<Op>) {
+fn build_calibration_eq<'a>(result: u64, args: &[u64], legal_ops: &[Op], ops: &'a mut Vec<Op>) -> Result<(), ()> {
     if ops.len() == args.len() - 1 {
         let eresult = match eval(args, ops) {
             Ok(value) => value,
-            Err(_) => return (Err(()), ops),
+            Err(_) => return Err(()),
         };
         if eresult == result {
-            return (Ok(()), ops);
+            return Ok(());
         } else {
-            return (Err(()), ops);
+            return Err(());
         }
     }
-    // This threading of ops is ugly, there must be a better way
-    let mut ret_ops = ops;
+    
     for op in legal_ops {
-        ret_ops.push(*op);
-        let (res, new_ops)  = build_calibration_eq(result, args, legal_ops, ret_ops);
+        ops.push(*op);
+        let res  = build_calibration_eq(result, args, legal_ops, ops);
         match res {
-            Ok(_) => return (Ok(()), new_ops),
+            Ok(_) => return Ok(()),
             Err(_) => (),
         }
-        new_ops.pop();
-        ret_ops = new_ops;
+        ops.pop();
     }
-    return (Err(()), ret_ops);
+    return Err(());
 }
 
 pub fn build_valid_eq(eq: &PossibleCalibrationEq, legal_ops: &[Op]) -> Option<CalibrationEq> {
@@ -149,12 +147,12 @@ pub fn build_valid_eq(eq: &PossibleCalibrationEq, legal_ops: &[Op]) -> Option<Ca
     let args = &eq.args;
     
     let mut ops = vec![];
-    let (res, ops) = build_calibration_eq(result, args, legal_ops, &mut ops);
+    let res = build_calibration_eq(result, args, legal_ops, &mut ops);
     match res {
         Ok(_) => (),
         Err(_) => return None,
     };
     // Need to clone here since Calibration Eq owns the ops and args
     // Use unwrap here since this should never fail at this point
-    return Some(CalibrationEq::new(result, args, ops).unwrap());
+    return Some(CalibrationEq::new(result, args, &ops).unwrap());
 }
