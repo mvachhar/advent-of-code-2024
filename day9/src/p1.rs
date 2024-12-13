@@ -60,44 +60,10 @@ fn checksum(disk_map: &Vec<DiskBlock>) -> Result<u64, Box<dyn Error>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    use std::io::Write;
-
-    use tempfile::NamedTempFile;
-
-    fn string_to_disk_map(s: &str) -> Vec<DiskBlock> {
-        s.chars()
-            .map(|c| {
-                if c == '.' {
-                    DiskBlock::Free
-                } else {
-                    DiskBlock::FileId(c.to_digit(10).unwrap())
-                }
-            })
-            .collect::<Vec<DiskBlock>>()
-    }
-
-    fn disk_map_to_string(disk_map: &Vec<DiskBlock>) -> Result<String, String> {
-        disk_map
-            .iter()
-            .map(|b| match b {
-                DiskBlock::FileId(id) => {
-                    let res = id.to_string();
-                    if res.len() > 1 {
-                        return Err("File ID too large".to_string());
-                    }
-                    Ok(res)
-                }
-                DiskBlock::Free => Ok(".".to_string()),
-            })
-            .collect()
-    }
-
-    #[test]
-    fn test_checksum() {
-        let disk_map = string_to_disk_map("0099811188827773336446555566..............");
-        assert_eq!(checksum(&disk_map).unwrap(), 1928);
-    }
+    use day9::test_util::{
+        string_to_disk_map,
+        disk_map_to_string,
+    };
 
     #[test]
     fn test_compact_disk_map() {
@@ -108,15 +74,6 @@ mod tests {
             "0099811188827773336446555566.............."
         );
     }
-
-    #[test]
-    fn test_read_disk_map() {
-        let mut file = NamedTempFile::new().unwrap();
-        writeln!(file, "2333133121414131402").unwrap();
-        let path = file.path().to_str().unwrap();
-        let disk_map = read_disk_map(path).unwrap();
-        assert_eq!(disk_map_to_string(&disk_map).unwrap(), "00...111...2...333.44.5555.6666.777.888899");
-    }
 }
 
 #[derive(Parser)]
@@ -126,7 +83,7 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    let mut disk_map = read_disk_map(&args.file).unwrap();
+    let mut disk_map = read_disk_map(&args.file, &mut |_, _, _| ()).unwrap();
     println!("Disk Map Length: {}", disk_map.len());
     compact_disk_map(&mut disk_map);
     println!("Checksum: {}", checksum(&disk_map).unwrap());
