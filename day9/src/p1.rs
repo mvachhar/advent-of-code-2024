@@ -1,58 +1,10 @@
 use std::error::Error;
-use std::fs::File;
-use std::io::{self, BufReader, Read};
+
+use day9::{DiskBlock, read_disk_map};
 
 use clap::Parser;
 
 // Sucks that this bloats to 64 bits, but not worth custom struct
-#[derive(Debug, Clone, Copy)]
-enum DiskBlock {
-    FileId(u32),
-    Free,
-}
-
-fn read_disk_map(file: &str) -> Result<Vec<DiskBlock>, io::Error> {
-    let file = File::open(file).unwrap();
-    let mut reader = BufReader::new(file);
-    let mut buffer = [0; 1];
-    let mut disk_map = Vec::new();
-
-    let mut next_file_id: u32 = 0;
-    let mut cur_type = DiskBlock::FileId(0);
-    loop {
-        let n = reader.read(&mut buffer)?;
-        if n == 0 {
-            break;
-        };
-        let byte = buffer[0];
-        let len = match byte {
-            b'\n' => {
-                break;
-            }
-            b'0'..=b'9' => u32::from(byte - b'0'),
-            _ => {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    format!("Invalid byte {}", byte),
-                ));
-            }
-        };
-        let block = match cur_type {
-            DiskBlock::FileId(_) => {
-                let file_id = next_file_id;
-                next_file_id += 1;
-                cur_type = DiskBlock::Free;
-                DiskBlock::FileId(file_id)
-            }
-            DiskBlock::Free => {
-                cur_type = DiskBlock::FileId(next_file_id);
-                DiskBlock::Free
-            }
-        };
-        disk_map.extend(std::iter::repeat(block).take(len as usize));
-    }
-    Ok(disk_map)
-}
 
 fn find_free_block(disk_map: &Vec<DiskBlock>, last_free: usize) -> Option<usize> {
     for i in last_free..disk_map.len() {
